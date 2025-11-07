@@ -5,20 +5,32 @@ import dotenv from "dotenv";
 
 dotenv.config();
 const app = express();
+const PORT = 3000;
+
+// Verificar se a chave está presente ANTES de iniciar o servidor
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+if (!GROQ_API_KEY || GROQ_API_KEY === 'SUA_CHAVE_DE_API_GROQ_AQUI') {
+    console.error("❌ ERRO: A variável GROQ_API_KEY não foi configurada corretamente no arquivo .env.");
+    console.error("Substitua 'SUA_CHAVE_DE_API_GROQ_AQUI' pela sua chave real.");
+    process.exit(1);
+}
+
 app.use(cors());
 app.use(express.json());
 
 app.post("/chat", async (req, res) => {
   const { message } = req.body;
+  
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        
+        model: "llama-3.1-8b-instant",
         messages: [
           {
             role: "system",
@@ -28,11 +40,28 @@ app.post("/chat", async (req, res) => {
         ]
       })
     });
-    const data = await response.json();
+
+    // Tratamento de Erro: Se a resposta não for OK (ex: 401 Unauthorized, 403 Forbidden)
+    if (!groqResponse.ok) {
+        let errorMsg = `Erro na API Groq (Status ${groqResponse.status}).`;
+        try {
+            const errorData = await groqResponse.json();
+            errorMsg = errorData.error.message || errorMsg;
+            console.error(`⚠️ Erro da API Groq (Status ${groqResponse.status}):`, errorData);
+        } catch (e) {
+            console.error("Não foi possível ler o erro JSON da Groq.", groqResponse.status);
+        }
+        // Retorna o erro específico para o frontend
+        return res.status(500).json({ reply: `Erro ao conectar com a IA: ${errorMsg}` });
+    }
+
+    const data = await groqResponse.json();
     res.json({ reply: data.choices[0].message.content });
+    
   } catch (err) {
-    res.status(500).json({ reply: "Erro ao conectar com o servidor de IA." });
+    console.error("❌ Erro de Conexão no Servidor:", err);
+    res.status(500).json({ reply: "Erro interno do servidor. Verifique o console do Node.js." });
   }
 });
 
-app.listen(3000, () => console.log("🚀 Servidor rodando em http://localhost:3000"));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
