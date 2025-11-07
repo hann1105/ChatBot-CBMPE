@@ -2,6 +2,8 @@ import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 const app = express();
@@ -62,6 +64,17 @@ app.post("/chat", async (req, res) => {
     console.error("❌ Erro de Conexão no Servidor:", err);
     res.status(500).json({ reply: "Erro interno do servidor. Verifique o console do Node.js." });
   }
+});
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Servir arquivos estáticos (index.html, script.js, etc.)
+app.use(express.static(__dirname));
+
+// Rota principal -> envia o index.html quando acessa o navegador
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
