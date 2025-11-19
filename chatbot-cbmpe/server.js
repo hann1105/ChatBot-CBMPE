@@ -2,8 +2,86 @@ import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
+
+dotenv.config();
+const app = express();
+const PORT = 3000;
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+if (!GROQ_API_KEY || GROQ_API_KEY === "chave") {
+  console.error("❌ ERRO: Chave GROQ_API_KEY inválida no .env");
+  process.exit(1);
+}
+
+app.use(cors());
+app.use(express.json());
+
+app.post("/chat", async (req, res) => {
+  const { message } = req.body;
+
+  try {
+    const groqResponse = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant", // MODELO CORRETO
+          messages: [
+            {
+              role: "system",
+              content:
+                "Você é um assistente virtual do Corpo de Bombeiros Militar de Pernambuco. Ajude o usuário com dúvidas sobre regularização de empresas e emissão do AVCB, e se precisar de ajuda de contato ou qualquer tipo de ajuda",
+            },
+            { role: "user", content: message },
+          ],
+        }),
+      }
+    );
+
+    const text = await groqResponse.text(); // Lê como texto SEMPRE
+
+    // Tenta converter para JSON
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("❌ A Groq NÃO retornou JSON:", text);
+      return res.status(500).json({
+        reply: "A Groq retornou uma resposta inesperada. Verifique o modelo e a chave.",
+      });
+    }
+
+    if (!groqResponse.ok) {
+      console.error("⚠️ Erro da API Groq:", data);
+      return res.status(500).json({
+        reply: `Erro na API Groq: ${data.error?.message || "Desconhecido"}`,
+      });
+    }
+
+    res.json({ reply: data.choices[0].message.content });
+  } catch (err) {
+    console.error("❌ Erro no servidor:", err);
+    res
+      .status(500)
+      .json({ reply: "Erro interno no servidor. Veja o console do Node.js." });
+  }
+});
+
+app.listen(PORT, () =>
+  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`)
+);
+
+
+
+
+/*import express from "express";
+import fetch from "node-fetch";
+import cors from "cors";
+import dotenv from "dotenv";
 
 dotenv.config();
 const app = express();
@@ -11,9 +89,9 @@ const PORT = 3000;
 
 // Verificar se a chave está presente ANTES de iniciar o servidor
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-if (!GROQ_API_KEY || GROQ_API_KEY === 'SUA_CHAVE_DE_API_GROQ_AQUI') {
+if (!GROQ_API_KEY || GROQ_API_KEY === 'chave') {
     console.error("❌ ERRO: A variável GROQ_API_KEY não foi configurada corretamente no arquivo .env.");
-    console.error("Substitua 'SUA_CHAVE_DE_API_GROQ_AQUI' pela sua chave real.");
+    console.error("chave");
     process.exit(1);
 }
 
@@ -39,6 +117,7 @@ app.post("/chat", async (req, res) => {
             content: "Você é um assistente virtual do Corpo de Bombeiros Militar de Pernambuco. Ajude o usuário com dúvidas sobre regularização de empresas e emissão do AVCB, de forma clara e cordial."
           },
           { role: "user", content: message }
+
         ]
       })
     });
@@ -66,15 +145,4 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Servir arquivos estáticos (index.html, script.js, etc.)
-app.use(express.static(__dirname));
-
-// Rota principal -> envia o index.html quando acessa o navegador
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));*/

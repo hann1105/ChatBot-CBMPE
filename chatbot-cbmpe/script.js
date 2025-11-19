@@ -125,3 +125,10 @@ sendBtn.addEventListener("click", () => {
 
 // Inicia o fluxo
 nextQuestion();
+// Enviar mensagem ao pressionar ENTER
+chatInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
